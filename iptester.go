@@ -65,8 +65,17 @@ func ReadIPFromFile(filename string) ([]string, error) {
 	return ip,nil
 }
 
+func Usage() {
+	fmt.Println("Usage   : ./iptester [options] -f ip_file|ip...")
+	fmt.Println("Options : -v : Verbose mode")
+	fmt.Println("          -h : Print this help and quits")
+	os.Exit(0)
+}
 
 func main() {
+	if os.Args[1] == "-h" {
+		Usage()
+	}
 	log.SetFlags(0)
 	config, err := GetConf()
 	if err != nil {
