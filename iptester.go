@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"log"
 	"fmt"
 	"os"
@@ -32,7 +33,7 @@ func PrintLong(info Info) {
 	fmt.Println(color, "IP Address :", info.Reput.IpAddress,"\033[0m")
 	fmt.Println(color, "Country :", info.Geoip.Country,"\033[0m")
 	fmt.Println(color, "Country Code :", info.Geoip.CountryCode,"\033[0m")
-	fmt.Println(color, "Region :", info.Geoip.Region,"\033[0m")
+	fmt.Println(color, "Region :", info.Geoip.RegionName,"\033[0m")
 	fmt.Println(color, "City :", info.Geoip.City,"\033[0m")
 	fmt.Println(color, "ISP :", info.Geoip.Isp,"\033[0m")
 	fmt.Println(color, "Org :", info.Geoip.Org,"\033[0m")
@@ -47,8 +48,30 @@ func PrintLong(info Info) {
 	fmt.Println()
 }
 
+func ReadIPFromFile(filename string) ([]string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil,err
+	}
+	defer file.Close()
+	scan := bufio.NewScanner(file)
+	scan.Split(bufio.ScanLines)
+	var ip []string
+
+	for scan.Scan() {
+		ip = append(ip, scan.Text())
+	}
+
+	return ip,nil
+}
+
+
 func main() {
+	log.SetFlags(0)
 	config, err := GetConf()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	Print := PrintShort
 	argsBegin := 1
@@ -58,19 +81,27 @@ func main() {
 		argsBegin = 2
 	}
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, ip := range os.Args[argsBegin:]{
-		geoip, err := Request(ip)
+	var ips []string
+	if os.Args[argsBegin] == "-f" {
+		ips, err = ReadIPFromFile(os.Args[argsBegin+1])
 		if err != nil {
 			log.Fatal(err)
+		}
+	}else{
+		ips = os.Args[argsBegin:]
+	}
+
+	for _, ip := range ips{
+		geoip, err := Request(ip)
+		if err != nil {
+			log.Print("GeoIP for ", ip, " failed : ",err)
+			continue
 		}
 
 		reput, err := GetReput(ip, config.Key)
 		if err != nil {
-			log.Fatal(err)
+			log.Print("Reputation for ", ip, " failed : ",err)
+			continue
 		}
 
 		info := Info{Geoip: *geoip, Reput: *reput}
